@@ -1,0 +1,10 @@
+primefac
+PIL
+pytesseract
+redis
+future
+futures
+requests
+PyMySQL
+paramiko
+pillow
