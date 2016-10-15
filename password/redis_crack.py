@@ -30,7 +30,7 @@ def weak_pass(password, ip, port=6379):
         return True
     except Exception as e:
         if e.message != 'invalid password':
-            logger.info(e)
+            logger.warning(e)
 
         logger.info('[False] %s %s' % (ip, password))
 

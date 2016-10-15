@@ -3,12 +3,15 @@
 from __future__ import unicode_literals, absolute_import
 # noinspection PyCompatibility
 from concurrent import futures
-from future.moves.queue import Queue
+from future.moves.queue import Queue, PriorityQueue
+from collections import deque
 import time
 import logging
+from colorlog import ColoredFormatter
 import logging.config
 import os
 import sys
+import grequests
 
 # 当前目录所在路径
 BASE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -18,7 +21,7 @@ LOG_PATH = BASE_PATH
 # 可以给日志对象设置日志级别，低于该级别的日志消息将会被忽略
 # CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET
 LOGGING_LEVEL = 'INFO'
-LOGGING_HANDLERS = ['console']
+LOGGING_HANDLERS = ['console_color', 'file']
 
 logging.config.dictConfig({
     'version': 1,
@@ -31,6 +34,19 @@ logging.config.dictConfig({
         'simple': {
             'format': '%(levelname)s %(message)s'
         },
+        'colored': {
+            '()': 'colorlog.ColoredFormatter',
+            'format': "%(log_color)s[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s %(reset)s",
+            'datefmt': "%H:%M:%S",
+            'log_colors': {
+                'DEBUG': 'white',
+                'INFO': 'white',
+                'WARNING': 'green',
+                'ERROR': 'yellow',
+                'CRITICAL': 'red',
+                # 'CRITICAL': 'red, bg_white',
+            }
+        }
     },
     'handlers': {
         'null': {
@@ -42,13 +58,18 @@ logging.config.dictConfig({
             'class': 'logging.StreamHandler',
             'formatter': 'verbose'
         },
+        'console_color': {
+            'level': 'DEBUG',
+            'class': 'colorlog.StreamHandler',
+            'formatter': 'colored'
+        },
         'file': {
             'level': 'DEBUG',
             # 'class': 'logging.FileHandler',
             'class': 'logging.handlers.RotatingFileHandler',
             # 如果没有使用并发的日志处理类，在多实例的情况下日志会出现缺失
             # 当达到10MB时分割日志
-            'maxBytes': 1024 * 1024 * 5,
+            'maxBytes': 1024 * 1024 * 3,
             'backupCount': 1,
             # If delay is true,
             # then file opening is deferred until the first call to emit().
@@ -89,9 +110,20 @@ def read_dict(file_name):
     :return:
     """
     with open(file_name, 'r') as f:
-        data = f.read().split('\n')
-        data = [t for t in data if t != '']
-
+        data = [line.strip() for line in f]
+        new_data = []
+        for t in data:
+            if not isinstance(t, unicode):
+                try:
+                    t = t.decode('utf8')
+                except:
+                    try:
+                        t = t.decode('gbk')
+                    except:
+                        pass
+            new_data.append(t)
+        data = [t for t in new_data if t != '']
+        data = deque(data)
     return data
 
 
@@ -117,7 +149,7 @@ class TaskExecutor(object):
     使用线程的执行器，可以并发执行任务
     """
 
-    def __init__(self, task_list, max_workers=20):
+    def __init__(self, task_list, max_workers=5):
         self.max_workers = max_workers
         self.task_list = task_list
         self.task_queue = Queue()
@@ -165,3 +197,82 @@ class TaskExecutor(object):
                 future_to_task = tmp_future_to_task
         end_time = time.time()
         logger.info('executor done, %.3fs' % (end_time - start_time))
+
+
+class AsyncHTTPExecutor(object):
+    """
+    异步HTTP请求，可以并发访问
+    """
+
+    def __init__(self, fn_on_queue_empty, max_workers=20, timeout=3):
+        self.fn_on_queue_empty = fn_on_queue_empty
+        self.task_queue = deque()
+        self.timeout = timeout
+        self.max_workers = max_workers
+        # data = func_add_2_queue()
+        # for t in data:
+        #     self.task_queue.append(t)
+
+    def get_next_task(self, max_num):
+        output = []
+        count = 0
+        no_more_task = False
+        while count < max_num:
+            try:
+                item = self.task_queue.popleft()
+                output.append(item)
+                count += 1
+            except IndexError:
+                no_more_task = self.fn_on_queue_empty(self.task_queue, max_num)
+                if no_more_task:
+                    break
+
+        return no_more_task, output
+
+    def run(self, fn_on_response, *args, **kwargs):
+        logger.info('executor start')
+        start_time = time.time()
+        no_more_task, urls = self.get_next_task(self.max_workers)
+        while True:
+            if len(urls):
+                break
+
+            tmp_urls = []
+            urls = (grequests.head(u, timeout=self.timeout) for u in urls)
+            for r in grequests.imap(urls):
+                fn_on_response(r)
+                no_more_task, urls = self.get_next_task(self.max_workers)
+                if len(urls):
+                    break
+
+        end_time = time.time()
+        logger.info('executor done, %.3fs' % (end_time - start_time))
+
+
+class ColorConsole(object):
+    GREEN = "\033[92m"
+    BLUE = "\033[94m"
+    BOLD = "\033[1m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    END = "\033[0m"
+
+    @classmethod
+    def green(cls, message):
+        return '%s%s%s' % (cls.GREEN, message, cls.END)
+
+    @classmethod
+    def blue(cls, message):
+        return '%s%s%s' % (cls.BLUE, message, cls.END)
+
+    @classmethod
+    def red(cls, message):
+        return '%s%s%s' % (cls.RED, message, cls.END)
+
+    @classmethod
+    def yellow(cls, message):
+        return '%s%s%s' % (cls.YELLOW, message, cls.END)
+
+    @classmethod
+    def bold(cls, message):
+        return '%s%s%s' % (cls.BOLD, message, cls.END)

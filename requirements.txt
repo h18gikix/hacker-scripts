@@ -1,3 +1,4 @@
+impacket
 primefac
 PIL
 pytesseract

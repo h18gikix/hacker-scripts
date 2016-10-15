@@ -3,7 +3,7 @@
 from __future__ import unicode_literals, absolute_import
 
 import logging
-import passwords
+import password
 
 import paramiko
 import os
@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from common.base import read_dict, TaskExecutor
 
 logger = logging.getLogger(__name__)
-passwords.update_syspath()
+password.update_syspath()
 
 """
 ssh 弱口令爆破
@@ -33,8 +33,9 @@ def weak_pass(password, ip, port=22, timeout=5):
             found_password.append((ip, password))
             logger.info('[True ] %s %s:%s' % (ip, name, password))
             return True
-        except:
-            logger.info('[False] %s %s:%s' % (ip, name, password))
+        except Exception as e:
+            logger.debug(e)
+            logger.debug('[False] %s %s:%s' % (ip, name, password))
 
     return False
 
