@@ -8,4 +8,6 @@ futures
 requests
 PyMySQL
 paramiko
+validators
+tornado
 pillow

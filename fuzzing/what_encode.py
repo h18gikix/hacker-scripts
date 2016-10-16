@@ -21,13 +21,14 @@ encode_method = ['hex', 'base64', 'zlib']
 def parse_str(encode_str, decode_method, *args, **kwargs):
     try:
         decode_str = encode_str.decode(decode_method)
-        logger.debug('%s: %s' % (decode_method, decode_str))
+        logger.info('%s: %s' % (decode_method, decode_str))
         return True, decode_str
     except:
         return False, encode_str
 
 
 def parse(encode_str):
+    encode_str = encode_str.strip()
     should_continue = True
     tmp_encode_str, decode_str = encode_str, encode_str
     recognized_methods = []
@@ -52,7 +53,7 @@ def parse(encode_str):
 
 
 def main():
-    parse('59584e6b5a6d453d')
+    parse('666c61677b686578327374725f6368616c6c656e67657d')
 
 
 if __name__ == '__main__':

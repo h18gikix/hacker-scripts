@@ -2,6 +2,7 @@ robots.txt
 .git/config
 .svn/entries
 index.html
+down.htm
 wwwroot.rar
 wwwroot.zip
 www.rar

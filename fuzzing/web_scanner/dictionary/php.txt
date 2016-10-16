@@ -1,10 +1,10 @@
 index.php
 flag.php
-index.html
+b4ckdo0r.php
+backdoor.php
 get.htm
 changepwd.php
 admin_index.php
-down.htm
 star.php
 book.php
 moban.php
@@ -242,13 +242,6 @@ admin/eWebEditor/admin_login.php
 admin/editor/admin_login.php
 eWebEditor/db/ewebeditor.mdb
 admin/eWebEditordb/ewebeditor.mdb
-robots.txt
-wwwroot.rar
-wwwroot.zip
-www.rar
-www.zip
-web.zip
-web.rar
 dl.php
 Admin_DataBackup.php
 Data_Backup.php
