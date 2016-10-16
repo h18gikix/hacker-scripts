@@ -9,7 +9,7 @@ import paramiko
 import os
 import sys
 # 把项目的目录加入的环境变量中，这样才可以导入 common.base
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common.base import read_dict, TaskExecutor
 
 logger = logging.getLogger(__name__)

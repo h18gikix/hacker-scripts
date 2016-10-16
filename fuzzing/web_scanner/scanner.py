@@ -1,5 +1,16 @@
 # -*- coding: utf-8 -*-
 # Created by restran on 2016/10/13
+
+"""
+使用方法
+
+默认是自动识别，如果没有识别出，则使用全部字典
+python scanner.py -u http://www.github.com
+
+指定使用什么字典去扫描
+python scanner.py -u http://www.github.com -w 10 -t 3 -d php -d dir
+"""
+
 from __future__ import unicode_literals, absolute_import
 
 import os
@@ -10,16 +21,29 @@ import logging
 from tornado.httpclient import HTTPRequest, HTTPError
 from future.moves.urllib.parse import urlunparse, urlparse
 from tornado import httpclient, gen, ioloop
+from optparse import OptionParser
+import validators
 
 # 把项目的目录加入的环境变量中，这样才可以导入 common.base
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from common.base import read_dict
 
 logger = logging.getLogger(__name__)
 
-target_base_url = 'http://127.0.0.1:8080/index.php'
-dict_list = ['dir', 'php', 'jsp', 'asp', 'aspx', 'mdb']
+parser = OptionParser()
+parser.add_option("-u", "--url", dest="target_url", type="string",
+                  help="target url, e.g. http://127.0.0.1:8080/index.php")
+parser.add_option("-w", "--worker", dest="worker_num", type="int",
+                  default=10, help="max worker num")
+parser.add_option("-t", "--timeout", dest="timeout", type="int",
+                  default=3, help="timeout in seconds")
+parser.add_option("-d", "--dict", dest="scan_dict", default=None,
+                  action="append",
+                  choices=['dir', 'php', 'jsp', 'asp', 'aspx', 'mdb'],
+                  help="which dict to scan, only allow dir, php, jsp, asp, aspx, mdb")
+
+# 字典列表
+DICT_LIST = ['dir', 'php', 'jsp', 'asp', 'aspx', 'mdb']
 
 
 class AsyncHTTPExecutor(object):
@@ -91,10 +115,13 @@ class AsyncHTTPExecutor(object):
 
 
 class WebScanner(object):
-    def __init__(self, url):
+    def __init__(self, url, max_worker=10, timeout=3, scan_dict=None):
         self.site_lang = ''
         self.raw_base_url = url
         self.base_url = url
+        self.max_worker = max_worker
+        self.timeout = timeout
+        self.scan_dict = scan_dict
         self.first_item = ''
         self.dict_data = {}
         self.first_queue = []
@@ -113,19 +140,23 @@ class WebScanner(object):
                 queue.append(item)
 
     def on_response(self, url, item, response, queue):
-        if response.code in [200, 301, 302, 405]:
-            logger.warning('[Y] %s' % url)
+        if response.code in [200, 304, 401, 403, 405]:
+            logger.warning('[Y] %s %s' % (response.code, url))
 
     def init_dict(self):
-        if self.first_item != '':
-            self.first_queue.extend(self.make_bak_file_list(self.first_item))
+        if self.scan_dict is None:
+            if self.first_item != '':
+                self.first_queue.extend(self.make_bak_file_list(self.first_item))
 
-        self.dict_data['dir'] = read_dict('dictionary/dir.txt')
-        if self.site_lang != '':
-            self.dict_data[self.site_lang] = read_dict('dictionary/%s.txt' % self.site_lang)
+            self.dict_data['dir'] = read_dict('dictionary/dir.txt')
+            if self.site_lang != '':
+                self.dict_data[self.site_lang] = read_dict('dictionary/%s.txt' % self.site_lang)
+            else:
+                tmp_dict_list = [t for t in DICT_LIST if t != 'dir']
+                for t in tmp_dict_list:
+                    self.dict_data[t] = read_dict('dictionary/%s.txt' % t)
         else:
-            tmp_dict_list = [t for t in dict_list if t != 'dir']
-            for t in tmp_dict_list:
+            for t in self.scan_dict:
                 self.dict_data[t] = read_dict('dictionary/%s.txt' % t)
 
     @classmethod
@@ -172,18 +203,32 @@ class WebScanner(object):
     def run(self):
         self.prepare_url()
         self.init_dict()
-        executor = AsyncHTTPExecutor(self.base_url, self.on_queue_empty, self.first_queue)
+        executor = AsyncHTTPExecutor(
+            self.base_url, self.on_queue_empty, self.first_queue,
+            self.max_worker, self.timeout
+        )
         yield executor.run(self.on_response)
 
 
 @gen.coroutine
 def main():
-    global target_base_url
-    print(sys.argv)
-    if len(sys.argv) > 1:
-        target_base_url = sys.argv[1]
-    logger.info(target_base_url)
-    ws = WebScanner(target_base_url)
+    (options, args) = parser.parse_args()
+    if options.target_url is None or not validators.url(options.target_url):
+        parser.print_help()
+        return
+
+    logger.info('target_url: %s' % options.target_url)
+    logger.info('worker_num: %s' % options.worker_num)
+    logger.info('timeout: %s' % options.timeout)
+    if options.scan_dict is None:
+        logger.info('scan_dict: auto')
+    else:
+        logger.info('scan_dict: %s' % options.scan_dict)
+
+    ws = WebScanner(
+        options.target_url, options.worker_num,
+        options.timeout, options.scan_dict
+    )
     yield ws.run()
 
 
