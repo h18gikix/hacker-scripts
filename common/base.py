@@ -13,8 +13,8 @@ import os
 import sys
 import grequests
 
-# 当前目录所在路径
-BASE_PATH = os.path.abspath(os.path.dirname(__file__))
+# 当前项目所在路径
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 日志所在目录
 LOG_PATH = BASE_PATH
@@ -69,7 +69,7 @@ logging.config.dictConfig({
             'class': 'logging.handlers.RotatingFileHandler',
             # 如果没有使用并发的日志处理类，在多实例的情况下日志会出现缺失
             # 当达到10MB时分割日志
-            'maxBytes': 1024 * 1024 * 3,
+            'maxBytes': 1024 * 1024 * 5,
             'backupCount': 1,
             # If delay is true,
             # then file opening is deferred until the first call to emit().
