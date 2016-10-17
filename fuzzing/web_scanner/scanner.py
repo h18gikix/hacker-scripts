@@ -68,10 +68,10 @@ class AsyncHTTPExecutor(object):
 
     def get_next_task(self):
         try:
-            item = self.task_queue.popleft()
+            item, method = self.task_queue.popleft()
         except IndexError:
-            item = self.fn_on_queue_empty(self.task_queue)
-        return item
+            item, method = self.fn_on_queue_empty(self.task_queue)
+        return item, method
 
     def make_url(self, item):
         if item.startswith('/'):
@@ -81,7 +81,7 @@ class AsyncHTTPExecutor(object):
         return url
 
     @gen.coroutine
-    def do_request(self, item, fn_on_response):
+    def do_request(self, item, method, fn_on_response):
         self.count += 1
         current_time = time.time()
         # 每隔10秒输出一次
@@ -93,29 +93,30 @@ class AsyncHTTPExecutor(object):
         url = ''
         try:
             url = self.make_url(item)
+            body = '' if method == 'POST' else None
             response = yield httpclient.AsyncHTTPClient().fetch(
                 HTTPRequest(url=url,
-                            method='HEAD',
-                            body=None,
+                            method=method,
+                            body=body,
                             decompress_response=True,
                             connect_timeout=self.timeout,
                             request_timeout=self.timeout,
                             follow_redirects=False))
-            fn_on_response(url, item, response, self.task_queue)
+            fn_on_response(url, item, method, response, self.task_queue)
         except HTTPError as e:
             if hasattr(e, 'response') and e.response:
-                fn_on_response(url, item, e.response, self.task_queue)
+                fn_on_response(url, item, method, e.response, self.task_queue)
             else:
-                logger.error('Exception: %s %s' % (e, item))
+                logger.error('Exception: %s %s %s' % (e, method, item))
         except Exception as e:
-            logger.error('Exception: %s %s' % (e, item))
+            logger.error('Exception: %s %s %s' % (e, method, item))
 
     @gen.coroutine
     def fetch_url(self, fn_on_response):
-        item = self.get_next_task()
+        item, method = self.get_next_task()
         while item is not None:
-            yield self.do_request(item, fn_on_response)
-            item = self.get_next_task()
+            yield self.do_request(item, method, fn_on_response)
+            item, method = self.get_next_task()
 
     @gen.coroutine
     def run(self, fn_on_response, *args, **kwargs):
@@ -155,30 +156,37 @@ class WebScanner(object):
                     del self.dict_data[d]
                     break
 
-                queue.append(item)
+                queue.append((item, 'HEAD'))
         try:
-            item = queue.popleft()
+            item, method = queue.popleft()
         except IndexError:
-            item = None
-        return item
+            item, method = None, None
+        return item, method
 
-    def on_response(self, url, item, response, queue):
+    def on_response(self, url, item, method, response, queue):
         if response.code in [200, 302, 304, 401, 403]:
             if item in self.found_items:
                 return
             self.found_items[item] = None
-            logger.warning('[Y] %s %s' % (response.code, url))
+            logger.warning('[Y] %s %s %s' % (response.code, method, url))
             # 自动对找到的代码文件扫描编辑器生成的备份文件
             if any(map(item.endswith, ['.php', '.asp', '.jsp'])):
-                queue.extendleft(self.make_bak_file_list(item))
+                bak_list = self.make_bak_file_list(item)
+                bak_list = [(t, 'HEAD') for t in bak_list]
+                queue.extendleft(bak_list)
         else:
+            if response.code == 405 and method != 'POST':
+                queue.appendleft((item, 'POST'))
+
             if self.verbose:
-                logger.info('[N] %s %s' % (response.code, url))
+                logger.info('[N] %s %s %s' % (response.code, method, url))
 
     def init_dict(self):
         if self.first_item != '':
-            self.first_queue.append(self.first_item)
-            self.first_queue.extend(self.make_bak_file_list(self.first_item))
+            first_queue = [self.first_item]
+            first_queue.extend(self.make_bak_file_list(self.first_item))
+            first_queue = [(t, 'HEAD') for t in first_queue]
+            self.first_queue.extend(first_queue)
 
         if self.scan_dict is None:
             self.dict_data['dir'] = read_dict('dictionary/dir.txt')
