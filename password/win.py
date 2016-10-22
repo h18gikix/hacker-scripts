@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 found_password = []
 
-ip_list = ['localhost']
+ip_list = ['10.1.3.2']
 username_list = ['administrator', 'admin']
 
 

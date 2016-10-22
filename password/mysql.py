@@ -17,7 +17,7 @@ Tomcat 弱口令爆破
 
 found_password = []
 
-ip_list = ['localhost']
+ip_list = ['10.10.1.29']
 username_list = ['root']
 database_name = 'mysql'
 

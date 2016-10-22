@@ -10,7 +10,9 @@ book.php
 moban.php
 default.php
 admin.htm
+index.php.txt
 2006.php
+2016.php
 add.php
 admin.php
 aspadmin.php

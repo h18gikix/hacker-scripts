@@ -1,7 +1,12 @@
 robots.txt
+key.txt
 .git/config
 .svn/entries
+img
+access
+flag.txt
 index.html
+admin.html
 down.htm
 wwwroot.rar
 wwwroot.zip
@@ -9,13 +14,14 @@ www.rar
 www.zip
 web.zip
 web.rar
-admin
+.htaccess
+admin/
 admin_index
 admin_admin
 index_admin
 GfEditor
-index
-EditBox
+index/
+EditBox/
 default
 manage
 hywindow
@@ -700,7 +706,6 @@ Kes
 get.htm
 down.htm
 admin.htm
-admin.html
 License.txt
 maillist.mdb
 admin_config.asp.bak
@@ -1424,7 +1429,6 @@ acacaca
 accent
 AcceptJob
 AcceptOrder
-access
 ace2000
 aceace
 aceeca

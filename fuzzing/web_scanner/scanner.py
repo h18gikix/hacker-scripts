@@ -164,7 +164,7 @@ class WebScanner(object):
         return item, method
 
     def on_response(self, url, item, method, response, queue):
-        if response.code in [200, 302, 304, 401, 403]:
+        if response.code in [200, 301, 302, 304, 401, 403]:
             if item in self.found_items:
                 return
             self.found_items[item] = None
