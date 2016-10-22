@@ -47,6 +47,7 @@ logger = Logger()
 
 
 class FileEventHandler(pyinotify.ProcessEvent):
+
     @classmethod
     def delete_file(cls, file_path):
         # 创建的文件中不属于特殊的保护文件，允许创建，例如正常上传图片
@@ -60,21 +61,34 @@ class FileEventHandler(pyinotify.ProcessEvent):
         os.system(shell_code)
         logger.warning(shell_code)
 
+    def restore_file(self, event, event_filename):
+        # 属于被修改文件，执行恢复
+        logger.warning('restore file %s' % event.pathname)
+        shell_code = 'cp -a %s%s %s' % (back_dir_name, event_filename, event.pathname)
+        os.system(shell_code)
+        logger.warning(shell_code)
+
     def on_create_event(self, event):
         monitor_dir, event_filename = get_file_name(event.pathname)
         logger.info('-----------------------------------------')
-        logger.warning('CREATE event: %s' % event.pathname)
+        logger.warning('on_create_event: %s' % event.pathname)
         file_exist = os.system("test -f '%s%s'" % (back_dir_name, event_filename))
         if file_exist == 0:
-            # 恢复文件
-            pass
+            # 文件存在，先判断md5，md5相同表示恢复文件
+            temp1 = os.popen("md5sum %s| awk '{print $1}'" % event.pathname).readlines()
+            temp2 = os.popen("md5sum %s%s| awk '{print $1}'" % (back_dir_name, event_filename)).readlines()
+            if temp1 == temp2:
+                # 属于恢复文件，不需要处理
+                pass
+            else:
+                self.restore_file(event, event_filename)
         else:
             self.delete_file(event.pathname)
 
     def on_modify_event(self, event):
         monitor_dir, event_filename = get_file_name(event.pathname)
         logger.info('-----------------------------------------')
-        logger.warning('MODIFY event: %s' % event.pathname)
+        logger.warning('on_modify_event: %s' % event.pathname)
 
         file_exist = os.system("test -f '%s%s'" % (back_dir_name, event_filename))
         if file_exist == 0:
@@ -85,30 +99,24 @@ class FileEventHandler(pyinotify.ProcessEvent):
                 # 属于恢复文件，不需要处理
                 pass
             else:
-                # 属于被修改文件，执行恢复
-                logger.warning('restore file %s' % event.pathname)
-                shell_code = 'cp -a %s%s %s' % (back_dir_name, event_filename, event.pathname)
-                logger.warning(shell_code)
+                self.restore_file(event, event_filename)
         else:
             self.delete_file(event.pathname)
 
     def on_delete_event(self, event):
         monitor_dir, event_filename = get_file_name(event.pathname)
         logger.info("-----------------------------------------")
-        logger.warning('DELETE event: %s' % event.pathname)
+        logger.warning('on_delete_event: %s' % event.pathname)
         file_exist = os.system("test -f '%s%s'" % (back_dir_name, event_filename))
         # 0 表示存在
         if file_exist == 0:
             # 恢复文件
-            logger.warning('restore file %s' % event.pathname)
-            shell_code = 'cp -a %s%s %s' % (back_dir_name, event_filename, event.pathname)
-            os.system(shell_code)
-            logger.warning(shell_code)
+            self.restore_file(event, event_filename)
         else:
             pass
 
     def process_IN_MOVE_SELF(self, event):
-        # logger.info('MOVE_SELF event: %s' % event.pathname)
+        logger.info('MOVE_SELF event: %s' % event.pathname)
         pass
 
     # 等价于执行删除
@@ -132,7 +140,7 @@ class FileEventHandler(pyinotify.ProcessEvent):
     def process_IN_ATTRIB(self, event):
         # print "-----------------------------------------"
         # print "ATTRIB event:", event.pathname
-        logger.info('ATTRIB event: %s' % event.pathname)
+        # logger.info('ATTRIB event: %s' % event.pathname)
         pass
 
     def process_IN_CLOSE_NOWRITE(self, event):
@@ -141,14 +149,15 @@ class FileEventHandler(pyinotify.ProcessEvent):
         # logger.info('CLOSE_NOWRITE event: %s' % event.pathname)
         pass
 
+    # 文件写完成
     def process_IN_CLOSE_WRITE(self, event):
-        # print "-----------------------------------------"
-        # print "CLOSE_WRITE event:", event.pathname
+        # logger.info('-----------------------------------------')
         # logger.info('CLOSE_WRITE event: %s' % event.pathname)
         pass
 
     def process_IN_CREATE(self, event):
         logger.info('-----------------------------------------')
+        logger.warning('CREATE event: %s' % event.pathname)
         self.on_create_event(event)
 
     def process_IN_DELETE(self, event):
