@@ -30,7 +30,7 @@ def caesar_decode(s, key):
 
 def main():
     for key in range(26):
-        s = 'LFZ{3bfgcc94c280714c}'
+        s = 'the tragedy of julius caesar.'
         # e = caesar_encode(s, key)
         d = caesar_decode(s, key)
         print(d)

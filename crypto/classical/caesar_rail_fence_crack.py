@@ -61,16 +61,17 @@ class Caesar(object):
 
 def main():
     key_prefix = ['flag', 'key', 'Key', 'Flag', 'nscf']
-    if __name__ == '__main__':
-        data = 'V4q56p95mojol33:7lm3'
-        output = rail_fence(data)
-        for t in output:
-            for key in range(26):
-                d = Caesar.decode(t, key)
-                tmp = d.lower()
-                for x in key_prefix:
-                    if tmp.startswith(x):
-                        print(d)
+
+    data = 'T_ysK9_5rhk__uFMt}3El{nu@E '
+    output = rail_fence(data)
+    for t in output:
+        for key in range(26):
+            d = Caesar.decode(t, key)
+            tmp = d.lower()
+            print(d)
+            for x in key_prefix:
+                if tmp.startswith(x):
+                    print(d)
 
 
 if __name__ == '__main__':

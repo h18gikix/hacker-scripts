@@ -6,7 +6,7 @@ import sys
 import binascii
 
 # dict = r'C:\MyTools\whatFormat.dic'
-dict_data = 'whatFormat.dic'
+dict_data = 'what_format.dic'
 
 
 def usage():
@@ -91,10 +91,11 @@ def save_file(file_name, data):
 
 
 def main():
-    if len(sys.argv) < 2:
-        usage()
-        exit()
-    file_name = sys.argv[1]
+    # if len(sys.argv) < 2:
+    #     usage()
+    #     exit()
+
+    file_name = 'convert_file'
     hex_data = load_file(file_name)
     dict_list = load_dict(dict_data)
     res_list = check_format(hex_data, dict_list)

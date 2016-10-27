@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 ssh 弱口令爆破
 """
 
-ip_list = ['10.10.1.29']
+ip_list = read_dict('ip.txt', clear_none=True)
 username_list = ['cmcc']
 found_password = []
 
@@ -50,7 +50,7 @@ def weak_pass(password, ip, port=22, timeout=5):
 def main():
     password_list = read_dict('password.dic')
     for ip in ip_list:
-        executor = TaskExecutor(password_list)
+        executor = TaskExecutor(password_list, max_workers=2)
         executor.run(weak_pass, ip)
 
     for t in found_password:

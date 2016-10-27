@@ -52,7 +52,7 @@ class RSAHelper(object):
 
 
 if __name__ == '__main__':
-    RSAHelper.decrypt('clipher', 'privatekey')
+    RSAHelper.decrypt('flag.enc', 'pub.key')
     # RSAHelper.encrypt('raw_data.txt', 'private_key.txt')
     # RSAHelper.decrypt('output.txt', 'private_key.txt')
     # RSAHelper.decrypt('key.enc', 'publickey.pub')

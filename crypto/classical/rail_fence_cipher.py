@@ -29,7 +29,7 @@ def parse(e):
 
 
 def main():
-    e = 'NlEyQd{seft}'
+    e = 'T_ysK9_5rhk__uFMt}3El{nu@E'
     parse(e)
 
 

@@ -103,9 +103,10 @@ def group(lst, n):
             yield tuple(val)
 
 
-def read_dict(file_name):
+def read_dict(file_name, clear_none=False):
     """
     读取字典文件
+    :param clear_none:
     :param file_name:
     :return:
     """
@@ -122,7 +123,8 @@ def read_dict(file_name):
                     except:
                         pass
             new_data.append(t)
-        data = [t for t in new_data if t != '']
+        if clear_none:
+            data = [t for t in new_data if t != '']
         data = deque(data)
     return data
 
