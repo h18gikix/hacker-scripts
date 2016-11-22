@@ -2,6 +2,7 @@ robots.txt
 key.txt
 .git/config
 .svn/entries
+.idea
 img
 access
 flag.txt

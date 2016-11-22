@@ -11,6 +11,8 @@ python scanner.py -u http://www.github.com
 python scanner.py -u http://www.github.com -w 10 -t 3 -d php -d dir
 """
 
+# TODO 添加对 Cookie 的支持
+
 from __future__ import unicode_literals, absolute_import
 
 import os

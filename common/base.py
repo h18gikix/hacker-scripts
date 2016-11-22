@@ -69,7 +69,7 @@ logging.config.dictConfig({
             'class': 'logging.handlers.RotatingFileHandler',
             # 如果没有使用并发的日志处理类，在多实例的情况下日志会出现缺失
             # 当达到10MB时分割日志
-            'maxBytes': 1024 * 1024 * 3,
+            'maxBytes': 1024 * 1024 * 5,
             'backupCount': 1,
             # If delay is true,
             # then file opening is deferred until the first call to emit().
