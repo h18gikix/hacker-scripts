@@ -14,15 +14,17 @@ python scanner.py -u http://www.github.com -w 10 -t 3 -d php -d dir
 # TODO 添加对 Cookie 的支持
 
 from __future__ import unicode_literals, absolute_import
-
+from tornado.escape import to_unicode
 import os
 import sys
 import time
 from collections import deque
 import logging
+import traceback
 from tornado.httpclient import HTTPRequest, HTTPError
 from future.moves.urllib.parse import urlunparse, urlparse
-from tornado import httpclient, gen, ioloop
+from tornado import gen, ioloop
+from tornado.httpclient import AsyncHTTPClient
 from optparse import OptionParser
 import validators
 
@@ -31,6 +33,19 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from common.base import read_dict
 
 logger = logging.getLogger(__name__)
+
+# 最大并发数量
+ASYNC_HTTP_MAX_CLIENTS = 200
+
+try:
+    # curl_httpclient is faster than simple_httpclient
+    AsyncHTTPClient.configure(
+        'tornado.curl_httpclient.CurlAsyncHTTPClient',
+        max_clients=ASYNC_HTTP_MAX_CLIENTS)
+except ImportError:
+    AsyncHTTPClient.configure(
+        'tornado.simple_httpclient.AsyncHTTPClient',
+        max_clients=ASYNC_HTTP_MAX_CLIENTS)
 
 parser = OptionParser()
 parser.add_option("-u", "--url", dest="target_url", type="string",
@@ -45,6 +60,10 @@ parser.add_option("-d", "--dict", dest="scan_dict", default=None,
                   action="append",
                   choices=['dir', 'php', 'jsp', 'asp', 'aspx', 'mdb'],
                   help="which dict to scan, only allow dir, php, jsp, asp, aspx, mdb")
+
+parser.add_option("-s", "--status", dest="status", default=None,
+                  action="append", choices=["200", "301", "302", "304", "401", "403"],
+                  help="which status to catch, only allow 200, 301, 302, 304, 401, 403")
 
 # 字典列表
 DICT_LIST = ['dir', 'php', 'jsp', 'asp', 'aspx', 'mdb']
@@ -93,10 +112,12 @@ class AsyncHTTPExecutor(object):
             past_time = current_time - self.start_time
             logger.info('items, speed, time: %s, %.1f/s, %.1fs' % (self.count, speed, past_time))
         url = ''
+
+        item = item.decode('utf-8')
         try:
             url = self.make_url(item)
             body = '' if method == 'POST' else None
-            response = yield httpclient.AsyncHTTPClient().fetch(
+            response = yield AsyncHTTPClient().fetch(
                 HTTPRequest(url=url,
                             method=method,
                             body=body,
@@ -135,7 +156,8 @@ class AsyncHTTPExecutor(object):
 
 
 class WebScanner(object):
-    def __init__(self, url, max_worker=10, timeout=3, scan_dict=None, verbose=False):
+    def __init__(self, url, max_worker=10, timeout=3,
+                 scan_dict=None, verbose=False, status=None):
         self.site_lang = ''
         self.raw_base_url = url
         self.base_url = url
@@ -147,6 +169,10 @@ class WebScanner(object):
         self.dict_data = {}
         self.first_queue = []
         self.found_items = {}
+        if status is None or len(status) == 0:
+            self.status = [200, 301, 302, 304, 401, 403]
+        else:
+            self.status = [int(t) for t in status]
 
     def on_queue_empty(self, queue, max_num=100):
         for t in range(max_num):
@@ -166,7 +192,7 @@ class WebScanner(object):
         return item, method
 
     def on_response(self, url, item, method, response, queue):
-        if response.code in [200, 301, 302, 304, 401, 403]:
+        if response.code in self.status:
             if item in self.found_items:
                 return
             self.found_items[item] = None
@@ -289,7 +315,8 @@ def main():
     ws = WebScanner(
         options.target_url, options.worker_num,
         options.timeout, options.scan_dict,
-        options.verbose
+        options.verbose,
+        options.status
     )
     yield ws.run()
 

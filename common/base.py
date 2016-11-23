@@ -87,6 +87,20 @@ logging.config.dictConfig({
 })
 
 logger = logging.getLogger(__name__)
+# Useful for very coarse version differentiation.
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] == 3
+PYPY = True if getattr(sys, 'pypy_version_info', None) else False
+
+if PY3:
+    from io import BytesIO
+    text_type = str
+    binary_type = bytes
+else:
+    from cStringIO import StringIO as BytesIO
+
+    text_type = unicode
+    binary_type = str
 
 
 def group(lst, n):
@@ -103,6 +117,44 @@ def group(lst, n):
             yield tuple(val)
 
 
+_UTF8_TYPES = (bytes, type(None))
+
+
+def utf8(value):
+    """Converts a string argument to a byte string.
+    """
+    if isinstance(value, _UTF8_TYPES):
+        return value
+    if not isinstance(value, text_type):
+        raise TypeError(
+            "Expected bytes, unicode, or None; got %r" % type(value)
+        )
+    return value.encode("utf-8")
+
+
+_TO_UNICODE_TYPES = (text_type, type(None))
+
+
+def to_unicode(value):
+    """Converts a string argument to a unicode string.
+    """
+    if isinstance(value, _TO_UNICODE_TYPES):
+        return value
+    if not isinstance(value, bytes):
+        raise TypeError(
+            "Expected bytes, unicode, or None; got %r" % type(value)
+        )
+    try:
+        value = value.decode('utf-8')
+    except:
+        try:
+            value = value.decode('gbk')
+        except:
+            pass
+
+    return value
+
+
 def read_dict(file_name, clear_none=False):
     """
     读取字典文件
@@ -114,15 +166,7 @@ def read_dict(file_name, clear_none=False):
         data = [line.strip() for line in f]
         new_data = []
         for t in data:
-            if not isinstance(t, unicode):
-                try:
-                    t = t.decode('utf8')
-                except:
-                    try:
-                        t = t.decode('gbk')
-                    except:
-                        pass
-            new_data.append(t)
+            new_data.append(to_unicode(t))
         if clear_none:
             data = [t for t in new_data if t != '']
         data = deque(data)
